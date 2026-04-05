@@ -5,7 +5,6 @@ import path from "node:path";
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { ImageContent } from "@mariozechner/pi-ai";
 import { KeyedAsyncQueue } from "openclaw/plugin-sdk/keyed-async-queue";
-import { isClaudeCliProvider } from "../../../extensions/anthropic/api.js";
 import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import type { OpenClawConfig } from "../../config/config.js";
 import type { CliBackendConfig } from "../../config/types.js";
@@ -41,16 +40,6 @@ export function resolveCliRunQueueKey(params: {
   if (params.serialize === false) {
     return `${params.backendId}:${params.runId}`;
   }
-  if (isClaudeCliProvider(params.backendId)) {
-    const sessionId = params.cliSessionId?.trim();
-    if (sessionId) {
-      return `${params.backendId}:session:${sessionId}`;
-    }
-    const workspaceDir = params.workspaceDir.trim();
-    if (workspaceDir) {
-      return `${params.backendId}:workspace:${workspaceDir}`;
-    }
-  }
   return params.backendId;
 }
 
@@ -66,6 +55,7 @@ export function buildSystemPrompt(params: {
   contextFiles?: EmbeddedContextFile[];
   modelDisplay: string;
   agentId?: string;
+  backendId?: string;
 }) {
   const defaultModelRef = resolveDefaultModelForAgent({
     cfg: params.config ?? {},
@@ -89,7 +79,7 @@ export function buildSystemPrompt(params: {
   });
   const ttsHint = params.config ? buildTtsSystemPromptHint(params.config) : undefined;
   const ownerDisplay = resolveOwnerDisplaySetting(params.config);
-  return buildAgentSystemPrompt({
+  const prompt = buildAgentSystemPrompt({
     workspaceDir: params.workspaceDir,
     defaultThinkLevel: params.defaultThinkLevel,
     extraSystemPrompt: params.extraSystemPrompt,
@@ -110,6 +100,7 @@ export function buildSystemPrompt(params: {
     ttsHint,
     memoryCitationsMode: params.config?.memory?.citations,
   });
+  return prompt;
 }
 
 export function normalizeCliModel(modelId: string, backend: CliBackendConfig): string {
